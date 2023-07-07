@@ -7,12 +7,68 @@ class BookType(DjangoObjectType):
         model = Book
         fields = ("id", "title", "description", "author", "price")
         
+class CreateBookMutation(graphene.Mutation):
+    class Arguments:
+        title = graphene.String()
+        description = graphene.String()
+        author = graphene.String()
+        price = graphene.Float()
+        
+    book = graphene.Field(BookType)
+    
+    def mutate(self, info, title, description, author, price):
+        book = Book(title=title, description=description, author=author, price=price)
+        book.save()
+        return CreateBookMutation(book=book)
+        
+class DeleteBookMutation(graphene.Mutation):
+    class Arguments:
+        id = graphene.ID(required=True)
+    
+    message = graphene.String()
+    
+    def mutate (self, info, id):
+        book = Book.objects.get(pk=id)
+        book.delete()
+        return DeleteBookMutation(message="Book deleted")
+
+class UpdateBookMutation(graphene.Mutation):
+    class Arguments:
+        id = graphene.ID(required=True)
+        title = graphene.String()
+        description = graphene.String()
+        author = graphene.String()
+        price = graphene.Float()
+    
+    book = graphene.Field(BookType)
+    
+    def mutate(self, info, id, title, description, author, price):
+        book = Book.objects.get(pk=id)
+        book.title = title
+        book.description = description
+        book.author = author
+        book.price = price
+        book.save()
+        return UpdateBookMutation(book=book)
+    
+    
 
 class Query(graphene.ObjectType):
+    
     hello = graphene.String(default_value="Hola!")
     books = graphene.List(BookType)
+    book = graphene.Field(BookType, id=graphene.ID())
     
     def resolve_books(self, info):
         return Book.objects.all()
     
-schema = graphene.Schema(query=Query)
+    def resolve_book(self, info, id):
+        return Book.objects.get(pk=id)
+    
+    
+class Mutation(graphene.ObjectType):
+    create_book = CreateBookMutation.Field()
+    delete_book = DeleteBookMutation.Field()
+    update_book = UpdateBookMutation.Field()
+    
+schema = graphene.Schema(query=Query, mutation=Mutation)
